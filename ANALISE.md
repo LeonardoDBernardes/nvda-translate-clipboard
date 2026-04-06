@@ -215,14 +215,17 @@ translateClipboard/
 
 - [x] Análise dos dois addons concluída
 - [x] Diretório criado em `C:\projetos-claude\nvda\translateClipboard\`
-- [ ] Criar `manifest.ini`
-- [ ] Criar `translator.py` (adaptado do instantTranslate)
-- [ ] Criar `clipboard.py` (adaptado do zPortapapeles, corrigindo bugs)
-- [ ] Criar `settings.py` (painel unificado)
-- [ ] Criar `__init__.py` (lógica principal)
-- [ ] Copiar e renomear sons do zPortapapeles
-- [ ] Criar `langslist.py` com lista expandida de idiomas
-- [ ] Testar no NVDA
+- [x] `manifest.ini` criado
+- [x] `translator.py` (adaptado do instantTranslate)
+- [x] `clipboard_monitor.py` (adaptado do zPortapapeles, bugs corrigidos)
+- [x] `settings.py` (painel unificado com seções Tradução e Clipboard)
+- [x] `__init__.py` (plugin principal completo)
+- [x] Sons copiados do zPortapapeles e renomeados
+- [x] `langslist.py` com lista completa de idiomas
+- [x] Verificação de sintaxe Python: todos OK
+- [x] Pacote `.nvda-addon` gerado em `Desktop\translateClipboard-1.0.0.nvda-addon`
+- [x] GitHub: LeonardoDBernardes/nvda-translate-clipboard
+- [ ] Teste no NVDA (amanhã pelo Leo)
 
 ---
 
