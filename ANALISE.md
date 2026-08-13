@@ -252,6 +252,28 @@ item 7 continua em aberto.
 
 ---
 
+## 11. Correção v1.0.2 (13/08/2026, primeiro teste real do Leo)
+
+Leo instalou o addon pela primeira vez e reportou: NVDA+Shift+T não abria a camada de
+tradução — dentro de terminal, abria uma aba nova sem motivo aparente.
+
+**Causa raiz encontrada:** conflito de tecla com outro addon já instalado, `terminalAccess`
+(`globalPlugins/terminalAccess.py`), que também reserva `kb:NVDA+shift+t` globalmente
+(`script_createNewTab`) — dentro de apps de terminal, ele intercepta o gesto e envia
+Ctrl+Shift+T pro terminal (abrir aba nova), por design daquele addon. Como os dois addons
+registram o mesmo gesto global, o script do terminalAccess tem prioridade e o do
+translateClipboard nunca é chamado.
+
+Também identificado (sem conflito, só registro): existe um terceiro addon, `VisionAssistant`,
+que tem funcionalidade de tradução própria (seleção, clipboard, voz por IA) numa camada
+separada ativada por NVDA+Shift+V — não colide com o translateClipboard.
+
+**Correção:** camada de tradução movida de `NVDA+Shift+T` para `NVDA+Shift+Y` (conferido
+livre em todos os addons instalados e no `gestures.ini`). Ajustado em `__init__.py`
+(`__gestures` e texto do `script_showHelp`) e `manifest.ini` (`version = 1.0.2`).
+
+---
+
 ## 8. Análise de Compatibilidade por Versão do NVDA
 
 ### Histórico das mudanças que quebram addons antigos
