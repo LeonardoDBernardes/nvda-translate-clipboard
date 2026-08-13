@@ -229,6 +229,29 @@ translateClipboard/
 
 ---
 
+## 10. Correções v1.0.1 (13/08/2026, revisão de código)
+
+Revisão encontrou 2 bugs reais no código gerado, nunca detectados porque o addon nunca
+chegou a ser testado no NVDA de verdade (item acima seguia pendente desde 06/04):
+
+1. **`self._conf['_restart_monitors_callback'] = self._restart_monitors`** — guardava uma
+   função Python dentro de `config.conf` (seção do addon). `config.conf` é serializado pelo
+   configobj ao salvar `nvda.ini`; uma função não é um valor serializável, risco de erro ou
+   configuração corrompida ao salvar. Corrigido: `TranslateClipboardSettings.pluginInstance`
+   guarda a referência direta ao plugin (setada em `__init__`, limpa em `terminate()`), e
+   `settings.py.onSave()` chama `self.pluginInstance._restart_monitors()` direto, sem passar
+   por `config.conf`.
+2. **`@lru_cache(maxsize=128)` em método de instância** (`_translate_cached`) — o cache é
+   compartilhado a nível de classe e mantém referência forte a `self`; addon recarregado sem
+   reiniciar o NVDA por completo ("Recarregar plugins") deixava a instância antiga presa na
+   memória. Corrigido: cache manual (`self._translationCache = {}`) preso à própria instância,
+   liberado quando o addon é desligado.
+
+`manifest.ini` atualizado pra `version = 1.0.1`. Pacote ainda não testado no NVDA real —
+item 7 continua em aberto.
+
+---
+
 ## 8. Análise de Compatibilidade por Versão do NVDA
 
 ### Histórico das mudanças que quebram addons antigos

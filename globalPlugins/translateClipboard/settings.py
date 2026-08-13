@@ -43,6 +43,7 @@ class TranslateClipboardSettings(SettingsPanel):
     # Translators: título do painel
     title = _("Tradução e Área de Transferência")
     addonConf = None  # injetado pelo __init__.py
+    pluginInstance = None  # injetado pelo __init__.py — referência direta ao plugin, nunca guardada em config.conf
 
     def makeSettings(self, sizer):
         helper = gui.guiHelper.BoxSizerHelper(self, sizer=sizer)
@@ -256,9 +257,10 @@ class TranslateClipboardSettings(SettingsPanel):
         c['game_lang']          = GAME_LANG_CODES[game_idx] if 0 <= game_idx < len(GAME_LANG_CODES) else 'en'
         c['game_interval']      = self._gameIntervalChoice.GetSelection()
 
-        # Notificar o plugin principal para reiniciar monitores
-        if self.addonConf.get('_restart_monitors_callback'):
+        # Notificar o plugin principal para reiniciar monitores (chamada direta,
+        # nunca via config.conf — configobj não sabe serializar uma função)
+        if self.pluginInstance:
             try:
-                self.addonConf['_restart_monitors_callback']()
+                self.pluginInstance._restart_monitors()
             except Exception:
                 pass

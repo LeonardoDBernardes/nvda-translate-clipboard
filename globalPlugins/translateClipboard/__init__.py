@@ -4,7 +4,7 @@
 # Combina instantTranslate + zPortapapeles, atualizado para NVDA 2023.1–2025.x
 # Copyright (C) 2026 Leo. GPL.
 
-from functools import wraps, lru_cache
+from functools import wraps
 from locale import getdefaultlocale
 from time import sleep
 
@@ -162,13 +162,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # Configuração
         config.conf.spec[ADDON_NAME] = _confspec
         self._conf = config.conf[ADDON_NAME]
-        self._conf['_restart_monitors_callback'] = self._restart_monitors
 
         # Estado da tradução
         self._toggling        = False
         self._lastTranslation = None
         self._autoTranslate   = False
         self._lastSpoken      = ''
+        self._translationCache = {}  # cache de traduções preso a esta instância — some sozinho ao desligar o addon
 
         # Monitores de clipboard
         self._clipMonitor     = None
@@ -177,8 +177,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         # Injetar função de tradução no módulo clipboard_monitor
         clipmon.set_game_translate_func(self._sync_translate_for_game)
 
-        # Painel de configurações
+        # Painel de configurações — referência direta pra chamar de volta, sem passar por config.conf
         TranslateClipboardSettings.addonConf = self._conf
+        TranslateClipboardSettings.pluginInstance = self
         gui.settingsDialogs.NVDASettingsDialog.categoryClasses.append(TranslateClipboardSettings)
 
         # Hook na fala para auto-translate e rastrear último texto falado
@@ -198,6 +199,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def terminate(self):
         if not globalVars.appArgs.secure:
             gui.settingsDialogs.NVDASettingsDialog.categoryClasses.remove(TranslateClipboardSettings)
+            TranslateClipboardSettings.pluginInstance = None
             _speechModule.speak = self._origSpeak
             self._stop_monitors()
             core.postNvdaStartup.unregister(self._post_startup)
@@ -303,9 +305,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         )
         self._copy_result(result.translation)
 
-    @lru_cache(maxsize=128)
     def _translate_cached(self, text, lang_from, lang_to, lang_swap=None):
-        """Traduz com cache. Bloqueia até terminar."""
+        """Traduz com cache preso a esta instância. Bloqueia até terminar."""
+        key = (text, lang_from, lang_to, lang_swap)
+        cached = self._translationCache.get(key)
+        if cached is not None:
+            return cached
         t = Translator(lang_from, lang_to, text, lang_swap, bool(self._conf['use_mirror']))
         t.start()
         i = 0
@@ -320,6 +325,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if not self._autoTranslate:
                 queueHandler.queueFunction(queueHandler.eventQueue, ui.message, _("Falha na tradução"))
             raise RuntimeError("Falha na tradução")
+        if len(self._translationCache) >= 128:
+            oldest_key = next(iter(self._translationCache))
+            del self._translationCache[oldest_key]
+        self._translationCache[key] = t
         return t
 
     def _sync_translate_for_game(self, text, lang_to):
