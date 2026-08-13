@@ -509,7 +509,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     )
     def script_showHelp(self, gesture):
         ui.message(_(
-            "Comandos disponíveis na camada NVDA+Shift+Y: "
+            "Comandos disponíveis na camada NVDA+Shift+T: "
             "T — traduzir seleção; "
             "Shift+T — traduzir clipboard; "
             "L — traduzir último texto falado; "
@@ -653,9 +653,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     }
 
     __gestures = {
-        # Camada de tradução (NVDA+Shift+T conflita com o addon terminalAccess dentro
-        # de terminais — ele reserva essa combinação pra abrir nova aba)
-        "kb:NVDA+shift+y": "ITLayer",
+        # Camada de tradução
+        "kb:NVDA+shift+t": "ITLayer",
         # Histórico (sem atalho padrão — atribuir via Gestos de Entrada)
         # Modo jogo (sem atalho padrão — atribuir via Gestos de Entrada)
         # Clipboard (ativos por padrão para anúncio)

@@ -354,3 +354,19 @@ except AttributeError:
 - instantTranslate GitHub: https://github.com/addonFactory/instantTranslate
 - zPortapapeles GitHub: https://github.com/hxebolax/zPortapapeles
 - Documentação NVDA addon dev: https://www.nvaccess.org/files/nvda/documentation/developerGuide.html
+
+---
+
+## 12. Correção v1.0.3 (13/08/2026) — solução definitiva do conflito
+
+Decisão do Leo: manter `NVDA+Shift+T` no translateClipboard (voltar atrás da v1.0.2) e
+resolver o conflito do OUTRO lado — mudando o atalho de criar aba do addon `terminalAccess`
+(que não é deste repositório, addon de terceiros de Pratik Patel) de `NVDA+Shift+T` para
+`NVDA+Shift+N`, editado diretamente em
+`globalPlugins/terminalAccess.py` (`_DEFAULT_GESTURES` dict e o decorator de
+`script_createNewTab`). Confirmado `NVDA+Shift+N` livre em todos os addons instalados do Leo.
+
+`__init__.py` e `manifest.ini` deste repositório revertidos pra `NVDA+Shift+T` /
+`version = 1.0.3`. Aviso: a mudança no terminalAccess foi aplicada só localmente na máquina
+do Leo — se aquele addon receber atualização pela Add-on Store, a mudança pode ser perdida
+e o conflito volta.
