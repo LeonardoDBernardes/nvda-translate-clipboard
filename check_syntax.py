@@ -1,21 +1,18 @@
-import ast, os, sys
+"""Confere a sintaxe de todos os .py do add-on (sem importar nada do NVDA)."""
+import ast
+import os
+import sys
 
-base = r'C:\projetos-claude\nvda\translateClipboard\globalPlugins\translateClipboard'
-files = ['speechOnDemand.py', 'langslist.py', 'translator.py',
-         'clipboard_monitor.py', 'settings.py', '__init__.py']
-
-errors = 0
-for f in files:
-    path = os.path.join(base, f)
+BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'globalPlugins', 'translateClipboard')
+erros = 0
+for nome in sorted(os.listdir(BASE)):
+    if not nome.endswith('.py'):
+        continue
     try:
-        src = open(path, 'r', encoding='utf-8').read()
-        ast.parse(src)
-        print(f'OK: {f}')
+        with open(os.path.join(BASE, nome), encoding='utf-8') as f:
+            ast.parse(f.read())
+        print('OK:', nome)
     except SyntaxError as e:
-        print(f'ERRO em {f}: linha {e.lineno}: {e.msg}')
-        errors += 1
-    except Exception as e:
-        print(f'ERRO em {f}: {e}')
-        errors += 1
-
-sys.exit(errors)
+        print('ERRO em %s: linha %s: %s' % (nome, e.lineno, e.msg))
+        erros += 1
+sys.exit(erros)

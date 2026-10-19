@@ -5,7 +5,6 @@
 # Copyright (C) 2026 Leo. GPL.
 
 from functools import wraps
-from locale import getdefaultlocale
 from time import sleep
 
 import addonHandler
@@ -27,7 +26,9 @@ import ui
 import wx
 
 from speech import speak
-from versionInfo import version_year
+# version_year morou em versionInfo até a 2025.x; no NVDA 2026.x só existe em buildVersion.
+from buildVersion import version_year
+from languageHandler import getLanguage
 
 try:
     from speech.commands import LangChangeCommand
@@ -46,9 +47,13 @@ addonHandler.initTranslation()
 _speechModule = speech.speech if version_year >= 2021 else speech
 
 # ── Idioma padrão do sistema ──────────────────────────────────────────────────
+# NVDA 2026.1+ roda em Python 3.13, onde locale.getdefaultlocale() foi removida
+# (deprecada desde 3.11, removida na 3.13). Trocado por languageHandler.getLanguage(),
+# que é o idioma que o próprio NVDA já usa -- mais confiável dentro do addon
+# e funciona igual nas versões antigas (2023.1+) e novas.
 def _system_lang():
     try:
-        loc = getdefaultlocale()[0] or 'en'
+        loc = getLanguage() or 'en'
         if loc == "zh_HK":
             return "zh-TW"
         if loc.startswith("zh"):
@@ -323,7 +328,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         t.join()
         if t.error:
             if not self._autoTranslate:
-                queueHandler.queueFunction(queueHandler.eventQueue, ui.message, _("Falha na tradução"))
+                # v1.0.5: quando o Google recusou por excesso de consultas (HTTP 429), dizer isso;
+                # o motivo de cada endereço que falhou fica no nvda.log (Translator.failures).
+                msg = (_("Falha na tradução: o Google limitou as consultas desta rede")
+                       if t.limited else _("Falha na tradução"))
+                queueHandler.queueFunction(queueHandler.eventQueue, ui.message, msg)
             raise RuntimeError("Falha na tradução")
         if len(self._translationCache) >= 128:
             oldest_key = next(iter(self._translationCache))

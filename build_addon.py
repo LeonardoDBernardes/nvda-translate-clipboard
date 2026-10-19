@@ -1,30 +1,40 @@
-"""Empacota o addon como arquivo .nvda-addon para instalação."""
-import zipfile
+"""Empacota o add-on como .nvda-addon (zip com o manifest.ini na raiz).
+
+Uso:  python3 build_addon.py [pasta-de-saida]      (padrão: ./dist)
+Gera dist/translateClipboard-<versao>.nvda-addon a partir da pasta deste arquivo.
+"""
 import os
-import shutil
+import re
+import sys
+import zipfile
 
-src_dir = r'C:\projetos-claude\nvda\translateClipboard'
-output  = r'C:\Users\leodb\Desktop\translateClipboard-1.0.0.nvda-addon'
+AQUI = os.path.dirname(os.path.abspath(__file__))
+EXCLUDES = {'__pycache__', '.git', '.gitignore', 'ANALISE.md', 'check_syntax.py',
+            'build_addon.py', 'tests', 'dist'}
 
-# Arquivos/pastas a excluir do pacote
-EXCLUDES = {
-    '__pycache__', '.git', '.gitignore',
-    'ANALISE.md', 'check_syntax.py', 'build_addon.py',
-}
 
-def should_include(path):
-    parts = path.replace('\\', '/').split('/')
-    return not any(p in EXCLUDES for p in parts)
+def versao():
+    with open(os.path.join(AQUI, 'manifest.ini'), encoding='utf-8') as f:
+        m = re.search(r'^version\s*=\s*(\S+)', f.read(), re.M)
+    return m.group(1)
 
-with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as z:
-    for root, dirs, files in os.walk(src_dir):
-        # Filtrar diretórios excluídos
-        dirs[:] = [d for d in dirs if d not in EXCLUDES]
-        for file in files:
-            filepath = os.path.join(root, file)
-            arcname  = os.path.relpath(filepath, src_dir)
-            if should_include(arcname):
-                z.write(filepath, arcname)
-                print(f'  + {arcname}')
 
-print(f'\nAddon criado: {output}')
+def main():
+    saida = sys.argv[1] if len(sys.argv) > 1 else os.path.join(AQUI, 'dist')
+    os.makedirs(saida, exist_ok=True)
+    destino = os.path.join(saida, 'translateClipboard-%s.nvda-addon' % versao())
+    with zipfile.ZipFile(destino, 'w', zipfile.ZIP_DEFLATED) as z:
+        for raiz, dirs, arquivos in os.walk(AQUI):
+            dirs[:] = sorted(d for d in dirs if d not in EXCLUDES)
+            for nome in sorted(arquivos):
+                caminho = os.path.join(raiz, nome)
+                rel = os.path.relpath(caminho, AQUI).replace('\\', '/')
+                if rel.split('/')[0] in EXCLUDES or nome in EXCLUDES or nome.endswith(('.pyc', '.nvda-addon')):
+                    continue
+                z.write(caminho, rel)
+                print('  +', rel)
+    print('\nAdd-on criado:', destino)
+
+
+if __name__ == '__main__':
+    main()
