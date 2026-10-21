@@ -80,6 +80,8 @@ class TranslateClipboardSettings(SettingsPanel):
             self, label=_("Substituir underscores por espaços antes de traduzir")))
         self._useMirrorChk = transHelper.addItem(wx.CheckBox(
             self, label=_("Usar servidor espelho (para usuários na China)")))
+        self._offlineChk = transHelper.addItem(wx.CheckBox(
+            self, label=_("Quando o Google falhar, traduzir com o modelo local (sem internet)")))
 
         sizer.Add(transSizer, flag=wx.EXPAND | wx.ALL, border=5)
 
@@ -152,6 +154,7 @@ class TranslateClipboardSettings(SettingsPanel):
         self._copyResultChk.SetValue(bool(c['copy_result']))
         self._replaceUnderscoresChk.SetValue(bool(c['replace_underscores']))
         self._useMirrorChk.SetValue(bool(c['use_mirror']))
+        self._offlineChk.SetValue(bool(c['offline_fallback']))
 
         # Habilitar/desabilitar swap baseado no idioma de origem
         if self._fromChoice.GetStringSelection() != g("auto"):
@@ -241,6 +244,9 @@ class TranslateClipboardSettings(SettingsPanel):
         c['copy_result']        = self._copyResultChk.IsChecked()
         c['replace_underscores'] = self._replaceUnderscoresChk.IsChecked()
         c['use_mirror']         = self._useMirrorChk.IsChecked()
+        c['offline_fallback']   = self._offlineChk.IsChecked()
+        if TranslateClipboardSettings.pluginInstance is not None:
+            TranslateClipboardSettings.pluginInstance.apply_offline_fallback()
 
         # Clipboard
         c['clip_active']        = self._clipActiveChk.IsChecked()

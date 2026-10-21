@@ -37,6 +37,7 @@ except ImportError:
 
 from .speechOnDemand import getSpeechOnDemandParameter, executeWithSpeakOnDemand, isSpeechOnDemandAvailable
 from .translator import Translator
+from . import localFallback
 from .langslist import g, langslist
 from .settings import TranslateClipboardSettings, INTERVAL_VALUES, GAME_LANG_CODES
 from . import clipboard_monitor as clipmon
@@ -74,6 +75,7 @@ _confspec = {
     "is_auto_swapped":      "boolean(default=False)",
     "replace_underscores":  "boolean(default=False)",
     "use_mirror":           "boolean(default=False)",
+    "offline_fallback":     "boolean(default=True)",
     # Clipboard
     "clip_active":          "boolean(default=True)",
     "clip_announce":        "boolean(default=True)",
@@ -179,6 +181,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._clipMonitor     = None
         self._gameMonitor     = None
 
+        # Local model when Google fails (only if installed; see localFallback.py)
+        self.apply_offline_fallback()
+
         # Injetar função de tradução no módulo clipboard_monitor
         clipmon.set_game_translate_func(self._sync_translate_for_game)
 
@@ -208,7 +213,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             _speechModule.speak = self._origSpeak
             self._stop_monitors()
             core.postNvdaStartup.unregister(self._post_startup)
+        Translator.local = None
+        localFallback.shutdown_shared()
         super().terminate()
+
+    def apply_offline_fallback(self):
+        """Turn the local model on/off from the config (also called by the settings panel)."""
+        local = localFallback.shared() if self._conf['offline_fallback'] else None
+        if local is not None and not local.available():
+            local = None
+        if local is None:
+            localFallback.shutdown_shared()
+        Translator.local = local
 
     # ── Monitores de clipboard ────────────────────────────────────────────────
 
@@ -332,6 +348,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 # o motivo de cada endereço que falhou fica no nvda.log (Translator.failures).
                 msg = (_("Falha na tradução: o Google limitou as consultas desta rede")
                        if t.limited else _("Falha na tradução"))
+                if Translator.local is not None:
+                    msg += _(", e o modelo local também falhou")
                 queueHandler.queueFunction(queueHandler.eventQueue, ui.message, msg)
             raise RuntimeError("Falha na tradução")
         if len(self._translationCache) >= 128:

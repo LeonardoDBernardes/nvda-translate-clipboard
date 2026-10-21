@@ -18,6 +18,7 @@ import json
 import re
 import ssl
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -30,6 +31,10 @@ _arabicBreaks  = u'[،؛؟]'
 _chineseBreaks = u'[　-〿︐-︟︰-﹯！-｠]'
 _latinBreaks   = r'[.,!?;:]'
 _splitReg = re.compile(u"{a}|{c}|{l}".format(a=_arabicBreaks, c=_chineseBreaks, l=_latinBreaks))
+
+# After Google refused with HTTP 429 and the local model answered, skip Google for this long
+# (each refused request only delays the answer). Seconds.
+_GOOGLE_PAUSE = 600
 
 # Correção de códigos retornados pelo Google (não-ISO)
 _langConversion = {'iw': 'he', 'jw': 'jv'}
@@ -156,10 +161,15 @@ class Translator(threading.Thread):
         error (bool): True se a tradução falhou
         limited (bool): True se a falha incluiu HTTP 429 (Google limitou as consultas desta rede)
         failures (list[str]): motivo de cada endereço que falhou, para diagnóstico
+        used_local (bool): True if any chunk came from the local offline model
     """
 
     # Nome do último endereço que funcionou; vale para todas as traduções desta sessão do NVDA.
     _preferred = None
+    # Local model (localFallback.LocalTranslator) set by the plugin; None = no fallback.
+    local = None
+    # time.monotonic() until which Google is skipped after a 429 answered by the local model.
+    _googlePausedUntil = 0.0
 
     def __init__(self, lang_from, lang_to, text, lang_swap=None, use_mirror=False, chunksize=3000):
         super().__init__(daemon=True)
@@ -177,6 +187,7 @@ class Translator(threading.Thread):
         self.error        = False
         self.limited      = False
         self.failures     = []
+        self.used_local   = False
         self._first_chunk = True
 
     def stop(self):
@@ -194,8 +205,36 @@ class Translator(threading.Thread):
         return eps
 
     def _fetch(self, chunk, lang_to):
-        """Traduz um pedaço tentando os endereços em ordem. Devolve (tradução, idioma detectado).
-        Levanta _AllFailed se todos falharem."""
+        """Translate one chunk: Google first, the local model when every endpoint failed.
+        Returns (translation, detected language). Raises _AllFailed when nothing worked."""
+        local = Translator.local
+        if local is not None and time.monotonic() < Translator._googlePausedUntil:
+            try:
+                return self._fetchLocal(chunk, lang_to, local)
+            except _AllFailed:
+                Translator._googlePausedUntil = 0.0  # local broke: back to Google, no second try
+                return self._fetchGoogle(chunk, lang_to)
+        try:
+            return self._fetchGoogle(chunk, lang_to)
+        except _AllFailed:
+            if local is None or self._stop_event.is_set():
+                raise
+        result = self._fetchLocal(chunk, lang_to, local)
+        if self.limited:
+            Translator._googlePausedUntil = time.monotonic() + _GOOGLE_PAUSE
+        return result
+
+    def _fetchLocal(self, chunk, lang_to, local):
+        try:
+            result = local.translate(chunk, self.lang_from, lang_to)
+        except Exception as e:
+            self.failures.append("local: %s" % _describe(e))
+            log.warning("translateClipboard: modelo local também falhou (%s)" % (e,))
+            raise _AllFailed()
+        self.used_local = True
+        return result
+
+    def _fetchGoogle(self, chunk, lang_to):
         q = urllib.parse.quote(chunk, safe="")
         sl = urllib.parse.quote(self.lang_from, safe="")
         tl = urllib.parse.quote(lang_to, safe="")
